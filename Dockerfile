@@ -13,11 +13,24 @@ RUN mkdir -p /catkin_ws/src \
 RUN mkdir -p /etc/apt/keyrings \
  && curl -sSf https://librealsense.intel.com/Debian/librealsense.pgp | tee /etc/apt/keyrings/librealsense.pgp > /dev/null
 
-RUN echo "deb [signed-by=/etc/apt/keyrings/librealsense.pgp] https://librealsense.intel.com/Debian/apt-repo `lsb_release -cs` main"
+RUN echo "deb [signed-by=/etc/apt/keyrings/librealsense.pgp] https://librealsense.intel.com/Debian/apt-repo `lsb_release -cs` main" | tee /etc/apt/sources.list.d/librealsense.list
 
 RUN apt-get update \
  && apt-get install -y librealsense2-dkms librealsense2-utils librealsense2-dev librealsense2-dbg \
  && rm -rf /var/lib/apt/lists/*
+
+RUN curl -O http://ceres-solver.org/ceres-solver-1.14.0.tar.gz \
+ && tar zxf ceres-solver-1.14.0.tar.gz
+
+ RUN apt-get update \
+ && apt-get install -y cmake libgoogle-glog-dev libgflags-dev \
+                       libatlas-base-dev libeigen3-dev libsuitesparse-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+ RUN mkdir ceres-bin \
+  && cd ceres-bin \
+  && cmake ../ceres-solver-1.14.0 \
+  && make -j3 install
 
 # RUN cd /catkin_ws \
 #  && source /opt/ros/${ROS_DISTRO}/setup.bash \
