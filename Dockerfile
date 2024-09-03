@@ -40,6 +40,43 @@ RUN git clone https://github.com/strasdat/Sophus.git \
  && cmake .. \
  && make install
 
+RUN apt-get update \
+ && apt-get install -y build-essential cmake git libgtk2.0-dev pkg-config \
+                       libavcodec-dev libavformat-dev libswscale-dev \
+                       python-dev python-numpy libtbb2 libtbb-dev libjpeg-dev \
+                       libpng-dev libtiff-dev libdc1394-22-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update \
+ && apt-get install -y software-properties-common \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN add-apt-repository "deb http://security.ubuntu.com/ubuntu xenial-security main" \
+ && apt-get update \
+ && apt-get install -y libjasper1 libjasper-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir opencv \
+ && curl -L "https://github.com/opencv/opencv/archive/refs/tags/3.4.20.tar.gz" | tar xz --strip=1 -C "opencv"
+
+ADD https://github.com/opencv/opencv_contrib/archive/refs/tags/3.4.20.tar.gz opencv_contrib.tar.gz
+
+RUN tar zxf opencv_contrib.tar.gz
+
+RUN cd opencv \
+ && mkdir build \
+ && cd build \
+ && cmake \
+    -D CMAKE_BUILD_TYPE=Release \
+    -D OPENCV_EXTRA_MODULES_PATH=/opencv_contrib-3.4.20/modules/ \
+    -D BUILD_opencv_cudacodec=OFF \
+    -D WITH_CUDA=OFF \
+    -D WITH_CUBLAS=OFF \
+    -D WITH_CUFFT=OFF \
+    -D ENABLE_PRECOMPILED_HEADERS=OFF \
+    -D CMAKE_INSTALL_PREFIX=/usr/local .. \
+ && make -j5 install
+
 # RUN cd /catkin_ws \
 #  && source /opt/ros/${ROS_DISTRO}/setup.bash \
 #  && apt-get update \
