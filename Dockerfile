@@ -22,15 +22,23 @@ RUN apt-get update \
 RUN curl -O http://ceres-solver.org/ceres-solver-1.14.0.tar.gz \
  && tar zxf ceres-solver-1.14.0.tar.gz
 
- RUN apt-get update \
+RUN apt-get update \
  && apt-get install -y cmake libgoogle-glog-dev libgflags-dev \
                        libatlas-base-dev libeigen3-dev libsuitesparse-dev \
  && rm -rf /var/lib/apt/lists/*
 
- RUN mkdir ceres-bin \
-  && cd ceres-bin \
-  && cmake ../ceres-solver-1.14.0 \
-  && make -j3 install
+RUN mkdir ceres-bin \
+ && cd ceres-bin \
+ && cmake ../ceres-solver-1.14.0 \
+ && make -j3 install
+
+RUN git clone https://github.com/strasdat/Sophus.git \
+ && cd Sophus/ \
+ && git checkout v1.0.0 \
+ && mkdir build \
+ && cd build \
+ && cmake .. \
+ && make install
 
 # RUN cd /catkin_ws \
 #  && source /opt/ros/${ROS_DISTRO}/setup.bash \
