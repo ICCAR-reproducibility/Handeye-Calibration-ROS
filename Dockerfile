@@ -77,6 +77,24 @@ RUN cd opencv \
     -D CMAKE_INSTALL_PREFIX=/usr/local .. \
  && make -j5 install
 
+ADD https://github.com/google/glog/archive/refs/tags/v0.4.0.tar.gz glog.tar.gz
+
+RUN tar zxf glog.tar.gz
+
+RUN cd glog-0.4.0 \
+ && mkdir build \
+ && cd build \
+ && cmake .. \
+ && make install
+
+#  RUN git clone https://github.com/ros-perception/vision_opencv.git \
+#   && cd vision_opencv \
+#   && git checkout melodic \
+#   && cd cv_bridge \
+#   && mkdir build && cd build \
+#   && cmake .. \
+#   &&  make -j5 install
+
 # RUN cd /catkin_ws \
 #  && source /opt/ros/${ROS_DISTRO}/setup.bash \
 #  && apt-get update \
