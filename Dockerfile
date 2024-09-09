@@ -57,9 +57,9 @@ RUN add-apt-repository "deb http://security.ubuntu.com/ubuntu xenial-security ma
  && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir opencv \
- && curl -L "https://github.com/opencv/opencv/archive/refs/tags/3.4.20.tar.gz" | tar xz --strip=1 -C "opencv"
+ && curl -L "https://github.com/opencv/opencv/archive/refs/tags/3.4.0.tar.gz" | tar xz --strip=1 -C "opencv"
 
-ADD https://github.com/opencv/opencv_contrib/archive/refs/tags/3.4.20.tar.gz opencv_contrib.tar.gz
+ADD https://github.com/opencv/opencv_contrib/archive/refs/tags/3.4.0.tar.gz opencv_contrib.tar.gz
 
 RUN tar zxf opencv_contrib.tar.gz
 
@@ -68,7 +68,7 @@ RUN cd opencv \
  && cd build \
  && cmake \
     -D CMAKE_BUILD_TYPE=Release \
-    -D OPENCV_EXTRA_MODULES_PATH=/opencv_contrib-3.4.20/modules/ \
+    -D OPENCV_EXTRA_MODULES_PATH=/opencv_contrib-3.4.0/modules/ \
     -D BUILD_opencv_cudacodec=OFF \
     -D WITH_CUDA=OFF \
     -D WITH_CUBLAS=OFF \
@@ -87,20 +87,26 @@ RUN cd glog-0.4.0 \
  && cmake .. \
  && make install
 
-#  RUN git clone https://github.com/ros-perception/vision_opencv.git \
-#   && cd vision_opencv \
-#   && git checkout melodic \
-#   && cd cv_bridge \
-#   && mkdir build && cd build \
-#   && cmake .. \
-#   &&  make -j5 install
+RUN git clone https://github.com/ros-perception/vision_opencv.git \
+  && cd vision_opencv \
+  && git checkout melodic \
+  && cd cv_bridge \
+  && source /opt/ros/${ROS_DISTRO}/setup.bash \
+  && mkdir build && cd build \
+  && cmake .. \
+  &&  make -j5 install
 
-# RUN cd /catkin_ws \
-#  && source /opt/ros/${ROS_DISTRO}/setup.bash \
-#  && apt-get update \
-#  && rosdep install -y --from-paths src --ignore-src \
-#  && rm -rf /var/lib/apt/lists/*
+RUN cd /opt/ros/melodic \
+ && rm -rf lib/libcv_bridge.so \
+ && rm -rf include/cv_bridge \
+ && rm -rf share/cv_bridge
 
-# RUN cd /catkin_ws \
-#   && source /opt/ros/${ROS_DISTRO}/setup.bash \
-#   && catkin_make
+RUN cd /catkin_ws \
+ && source /opt/ros/${ROS_DISTRO}/setup.bash \
+ && apt-get update \
+ && rosdep install -y --from-paths src --ignore-src \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN cd /catkin_ws \
+  && source /opt/ros/${ROS_DISTRO}/setup.bash \
+  && catkin_make
