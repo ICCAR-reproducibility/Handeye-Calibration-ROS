@@ -1,0 +1,144 @@
+# Use the official Ubuntu 18.04 base image
+FROM ubuntu:18.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV ROS_DISTRO=melodic
+ENV OPENCV_VERSION=3.4.0
+
+# Install necessary packages and tools
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    libgtk2.0-dev \
+    pkg-config \
+    libavcodec-dev \
+    libavformat-dev \
+    libswscale-dev \
+    python-dev \
+    python-numpy \
+    libtbb2 \
+    libtbb-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libtiff-dev \
+    libdc1394-22-dev \
+    sudo \
+    wget \
+    lsb-release \
+    curl \
+    gnupg2 \
+    libpcl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install a newer version of CMake from Kitware's APT repository
+RUN apt-get update && apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common \
+    && wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key add - \
+    && apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main' \
+    && apt-get update && apt-get install -y cmake
+
+# Install ROS Melodic
+RUN sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list' \
+    && apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654 \
+    && apt-get update && apt-get install -y ros-melodic-desktop-full \
+    && apt-get install -y python-rosdep python-rosinstall python-rosinstall-generator python-wstool build-essential \
+    && rosdep init && rosdep update \
+    && echo "source /opt/ros/melodic/setup.bash" >> ~/.bashrc
+
+# Install OpenCV 3.4.0 with contrib modules
+RUN git clone https://github.com/opencv/opencv.git /opencv \
+    && git clone https://github.com/opencv/opencv_contrib.git /opencv_contrib \
+    && cd /opencv && git checkout $OPENCV_VERSION \
+    && cd /opencv_contrib && git checkout $OPENCV_VERSION \
+    && mkdir /opencv/build && cd /opencv/build \
+    && cmake -D CMAKE_BUILD_TYPE=Release \
+             -D OPENCV_EXTRA_MODULES_PATH=/opencv_contrib/modules/ \
+             -D BUILD_opencv_cudacodec=OFF \
+             -D WITH_CUDA=OFF \
+             -D WITH_CUBLAS=OFF \
+             -D WITH_CUFFT=OFF \
+             -D ENABLE_PRECOMPILED_HEADERS=OFF \
+             -D CMAKE_INSTALL_PREFIX=/usr/local .. \
+    && make -j5 \
+    && make install \
+    && rm -rf /opencv /opencv_contrib
+
+# Install Jasper from prebuilt package (try this if building from source fails)
+RUN apt-get update && apt-get install -y \
+    libjasper-dev || true  # Fallback if it's unavailable
+
+# Add the Intel RealSense repository for librealsense
+#ChatGPT
+#RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-key F4E4B776 \
+#    && add-apt-repository "deb http://repos.inte-lrealsense.com/$(lsb_release -cs) main" \
+#    && apt-get update
+#
+# Human
+RUN mkdir -p /etc/apt/keyrings \
+ && curl -sSf https://librealsense.intel.com/Debian/librealsense.pgp | tee /etc/apt/keyrings/librealsense.pgp > /dev/null
+
+RUN echo "deb [signed-by=/etc/apt/keyrings/librealsense.pgp] https://librealsense.intel.com/Debian/apt-repo `lsb_release -cs` main" | tee /etc/apt/sources.list.d/librealsense.list
+
+# Install librealsense for Intel® RealSense™ RGBD cameras
+RUN apt-get update && apt-get install -y \
+    librealsense2-dkms \
+    librealsense2-utils \
+    librealsense2-dev \
+    librealsense2-dbg
+
+# Install visp_hand2eye_calibration and other dependencies
+RUN apt-get update && apt-get install -y \
+    ros-melodic-visp-hand2eye-calibration \
+    ros-melodic-cv-bridge \
+    ros-melodic-pcl-ros
+
+# Install glog (0.4.0)
+RUN git clone https://github.com/google/glog.git /glog \
+    && cd /glog && git checkout v0.4.0 \
+    && mkdir build && cd build \
+    && cmake .. && make -j5 && make install
+
+# Install Ceres-solver (1.14.0)
+RUN git clone https://ceres-solver.googlesource.com/ceres-solver /ceres-solver \
+    && cd /ceres-solver && git checkout 1.14.0 \
+    && mkdir build && cd build \
+    && cmake .. && make -j5 && make install
+
+# Install Sophus (1.0.0)
+RUN git clone https://github.com/strasdat/Sophus.git /Sophus \
+    && cd /Sophus && git checkout v1.0.0 \
+    && mkdir build && cd build \
+    && cmake .. && make -j5 && make install
+
+# Install cv_bridge from source (to use OpenCV 3.4.0)
+RUN git clone https://github.com/ros-perception/vision_opencv.git /vision_opencv \
+    && cd /vision_opencv && git checkout melodic \
+    && cd cv_bridge && mkdir build && cd build \
+    && cmake .. -DCMAKE_PREFIX_PATH=/opt/ros/melodic \
+    && make -j5 && make install \
+    && rm -rf /opt/ros/melodic/lib/libcv_bridge.so \
+    && rm -rf /opt/ros/melodic/include/cv_bridge \
+    && rm -rf /opt/ros/melodic/share/cv_bridge
+
+# Install necessary packages and tools
+RUN apt-get update && apt-get install -y \
+    libgflags-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set up the catkin workspace and build the Handeye-Calibration-ROS package
+RUN mkdir -p /catkin_ws/src \
+    && cd /catkin_ws/src \
+    && git clone https://github.com/lixiny/Handeye-Calibration-ROS.git \
+    && cd /catkin_ws \
+    && /bin/bash -c "source /opt/ros/melodic/setup.bash; catkin_make"
+
+# Set the working directory
+WORKDIR /catkin_ws
+
+# Source the ROS and catkin environment
+RUN echo "source /opt/ros/melodic/setup.bash" >> ~/.bashrc \
+    && echo "source /catkin_ws/devel/setup.bash" >> ~/.bashrc
+
+# Start a shell by default
+CMD ["/bin/bash"]
